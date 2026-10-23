@@ -1,9 +1,11 @@
-/* Loot Generator v0.2.0 — Foundry VTT v14. Original, offline content. */
+/* Loot Generator v0.2.1 — Foundry VTT v14. Optional Open5e V2 online source. */
 const ID = 'loot-generator';
 const {ApplicationV2, DialogV2} = foundry.applications.api;
 const escapeHTML = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp = (n, low, high, fallback = low) => Number.isFinite(Number(n)) ? Math.min(high, Math.max(low, Math.trunc(Number(n)))) : fallback;
 const randomSeed = () => String(Math.floor(Math.random() * 4294967295));
+const OPEN5E_API = 'https://api.open5e.com/v2/';
+const onlinePriceByRarity = [100, 400, 4000, 40000, 200000];
 const rarities = ['common','uncommon','rare','very rare','legendary'];
 const shopTypes = {
   blacksmith:'Blacksmith', alchemist:'Alchemist', general:'General Store', arcanist:'Magic Shop',
@@ -50,8 +52,57 @@ const shopsSuffix = ['of the Ember Guild','& Sons','at the Crossroads','of the S
 function seeded(seed) {let h=2166136261;for(const ch of String(seed))h=Math.imul(h ^ ch.charCodeAt(0),16777619);let a=h>>>0;return () => {a+=0x6D2B79F5;let t=a;t=Math.imul(t ^ t>>>15,t|1);t^=t+Math.imul(t ^ t>>>7,t|61);return ((t ^ t>>>14)>>>0)/4294967296;};}
 const pick = (r, arr) => arr[Math.floor(r()*arr.length)];
 function sample(r, items, n) {const pool=[...items],out=[];while(pool.length && out.length<n)out.push(pool.splice(Math.floor(r()*pool.length),1)[0]);return out;}
-const rarityLevel = x => Math.max(0,rarities.indexOf(String(x ?? 'common').toLowerCase()));
-function normalizeSource(item) {return {name:String(item.name ?? 'Item'),category:String(item.category ?? 'general'),rarity:String(item.rarity ?? 'common').toLowerCase(),priceGP:Math.max(0,Number(item.priceGP)||0),description:String(item.description ?? ''),uuid:item.uuid ?? null,img:item.img ?? null,resourceId:item.resourceId ?? null,source:item.source ?? 'Source'};}
+const rarityLevel = x => Math.max(0,rarities.indexOf(String(x?.name ?? x?.key ?? x ?? 'common').toLowerCase().replace(/[_-]/g,' ')));
+const textPlain = value => String(value ?? '').replace(/<[^>]*>/g, ' ').trim().slice(0,1800);
+const costInGP = (raw, fallback = 0) => {
+  if(typeof raw === 'number') return Math.max(0,raw);
+  if(typeof raw === 'string') {
+    const match=raw.match(/^\s*([\d.]+)\s*(pp|gp|ep|sp|cp)?/i);
+    if(match)return Number(match[1])*({pp:10,gp:1,ep:0.5,sp:0.1,cp:0.01}[match[2]?.toLowerCase()??'gp']??1);
+  }
+  const value=Number(raw?.value??raw?.cost??NaN), denom=String(raw?.unit??raw?.denomination??'gp').toLowerCase();
+  return Number.isFinite(value) ? Math.max(0,value*({pp:10,gp:1,ep:0.5,sp:0.1,cp:0.01}[denom]??1)) : fallback;
+};
+const onlineCategory = (item, magic) => {
+  const blob=[item?.category?.name, item?.category?.key,item?.type,item?.name].join(' ').toLowerCase();
+  if(magic){if(/potion|elixir/.test(blob))return 'alchemist';return 'arcanist';}
+  if(/armor|shield/.test(blob))return 'armorer';
+  if(/weapon|sword|bow|dagger|axe/.test(blob) || item?.is_weapon)return 'blacksmith';
+  if(/herb|plant|poison/.test(blob))return 'herbalist';
+  if(/gem|jewel|ring/.test(blob))return 'jeweler';
+  if(/book|scroll|paper/.test(blob))return 'bookstore';
+  if(/tool|rope|pack|tent|climb/.test(blob))return 'outfitter';
+  return 'general';
+};
+function mapOpen5eItem(item, magic = false) {
+  if(!item || typeof item.name!=='string' || !item.name.trim())return null;
+  const rarity=String(item.rarity?.name??item.rarity?.key??(magic?'uncommon':'common')).toLowerCase().replace(/[_-]/g,' ');
+  const tier=rarityLevel(rarity);
+  const category=onlineCategory(item,magic);
+  const priceGP=costInGP(item.cost,magic ? onlinePriceByRarity[tier] : 0);
+  const sourceName=textPlain(item.document?.display_name??item.document?.name??'Open5e');
+  return normalizeSource({name:item.name,category,rarity,priceGP,
+    description:textPlain(item.desc??item.description),source:'Open5e · '+sourceName,
+    sourceUrl:'https://open5e.com/'+(magic?'magic-items':'items'),
+    itemType:'loot' // Remote metadata is not a complete dnd5e attack/equipment schema.
+  });
+}
+async function loadOpen5e(value, search='') {
+  const path=value==='open5e-magic'?'magicitems':value==='open5e-items'?'items':null;
+  if(!path)throw Error('Unknown online source');
+  const isMagic=path==='magicitems';
+  const url=new URL(path+'/',OPEN5E_API);
+  url.searchParams.set('limit','150');
+  if(String(search).trim())url.searchParams.set('name__icontains',String(search).trim().slice(0,80));
+  let response;
+  try {response=await fetch(url.toString(),{method:'GET',mode:'cors',credentials:'omit',headers:{Accept:'application/json'},signal:AbortSignal.timeout(12000)});}
+  catch(err){throw Error('Open5e connection failed (offline, timeout, or browser CORS): '+err.message);}
+  if(!response.ok)throw Error('Open5e returned HTTP '+response.status);
+  const payload=await response.json();
+  if(!Array.isArray(payload?.results))throw Error('Unexpected response from Open5e');
+  return payload.results.map(x=>mapOpen5eItem(x,isMagic)).filter(Boolean);
+}
+function normalizeSource(item) {return {name:String(item.name ?? 'Item'),category:String(item.category ?? 'general'),rarity:String(item.rarity ?? 'common').toLowerCase(),priceGP:Math.max(0,Number(item.priceGP)||0),description:String(item.description ?? ''),uuid:item.uuid ?? null,img:item.img ?? null,resourceId:item.resourceId ?? null,itemType:item.itemType??null,sourceUrl:item.sourceUrl??null,source:item.source ?? 'Source'};}
 function generate(kind, options={}, source=[]) {
   if(!['loot','shop','magic'].includes(kind))throw Error('Unknown generator type');
   const opts={...options,seed:String(options.seed || randomSeed())},r=seeded(opts.seed);
@@ -70,7 +121,7 @@ function generate(kind, options={}, source=[]) {
     const cat=shopTypes[opts.category]?opts.category:'general',wealth={poor:.65,normal:1,rich:1.8,luxury:3.5}[opts.wealth]??1;
     const cap=clamp(opts.maxRarity,0,4,1),n=clamp(opts.count,1,40,12);
     const eligible=[...catalog.filter(x=>x.category===cat || (cat==='general'&&x.category==='outfitter') || (cat==='blackmarket'&&rarityLevel(x.rarity)>=1)),...extra.filter(x=>x.category===cat || cat==='blackmarket' || cat==='arcanist' || (cat==='general'&&rarityLevel(x.rarity)===0))].filter(x=>rarityLevel(x.rarity)<=cap);
-    entries=sample(r,eligible,n).map(x=>({...x,qty:1+Math.floor(r()*Math.max(2,wealth*4)),priceGP:Math.round(x.priceGP*wealth*(.85+.3*r())*100)/100}));
+    entries=sample(r,eligible,n).map(x=>({...x,qty:1+Math.floor(r()*Math.max(2,wealth*4)),priceGP:Math.round(x.priceGP*wealth*(.85+.3*r())*100)/100,generatedShopPrice:true}));
     title=shopTypes[cat]+' '+pick(r,shopsSuffix);subtitle=(opts.wealth||'normal')+' economy · '+entries.length+' stock types';
     lines=['Generated prices are estimates; use the NPC Shops editor to adjust them.'];
   } else {
@@ -82,7 +133,8 @@ function generate(kind, options={}, source=[]) {
   }
   return {kind,seed:opts.seed,created:new Date().toISOString(),title,subtitle,lines,coins,entries};
 }
-async function sourceItems(value) {
+async function sourceItems(value, search='') {
+  if(value==='open5e-items' || value==='open5e-magic')return loadOpen5e(value,search);
   if(!value || value==='builtin')return [];
   if(value==='world')return (game.items?.contents??[]).slice(0,1200).map(x=>documentItem(x));
   if(value==='crafting') {
@@ -117,18 +169,19 @@ async function resolveItem(item,qty) {
   if(game.system.id!=='dnd5e')throw Error('This action requires D&D 5e.');
   let doc=item.uuid?await fromUuid(item.uuid):null;
   if(!doc && game.items?.getName)doc=game.items.getName(item.name);
-  const data=doc?.documentName==='Item'?doc.toObject():{name:item.name,type:'loot',img:item.img||'icons/svg/item-bag.svg',system:{quantity:1,price:{value:Math.max(0,Number(item.priceGP)||0),denomination:'gp'},description:{value:'<p>'+escapeHTML(item.description||'Generated loot concept')+'</p>'}}};
+  const data=doc?.documentName==='Item'?doc.toObject():{name:item.name,type:['weapon','equipment','consumable','tool','loot'].includes(item.itemType)?item.itemType:'loot',img:item.img||'icons/svg/item-bag.svg',system:{quantity:1,price:{value:Math.max(0,Number(item.priceGP)||0),denomination:'gp'},description:{value:'<p>'+escapeHTML(item.description||'Generated loot concept')+'</p>'}}};
   delete data._id;delete data.folder;delete data.sort;delete data.ownership;
   data.system??={};data.system.quantity=clamp(qty,1,999,1);
+  if(item.generatedShopPrice) data.system.price={value:Math.max(0,Number(item.priceGP)||0),denomination:'gp'};
   if(item.resourceId){data.flags??={};data.flags['gathering-crafting']={...(data.flags['gathering-crafting']??{}),resourceId:item.resourceId};}
   return data;
 }
-const defaults={loot:{theme:'generic',cr:'4',hoard:'hoard',count:'6',source:'builtin',seed:''},shop:{category:'blacksmith',wealth:'normal',maxRarity:'1',count:'12',source:'builtin',seed:''},magic:{rarity:'rare',count:'3',preferSource:'yes',source:'builtin',seed:''}};
+const defaults={loot:{theme:'generic',cr:'4',hoard:'hoard',count:'6',source:'builtin',search:'',seed:''},shop:{category:'blacksmith',wealth:'normal',maxRarity:'1',count:'12',source:'builtin',search:'',seed:''},magic:{rarity:'rare',count:'3',preferSource:'yes',source:'builtin',search:'',seed:''}};
 const tabLabels={loot:'Loot',shop:'Shops',magic:'Magic Items'};
 function notice(s,level='info'){ui.notifications?.[level]?.('Loot Generator: '+s);}
 class LootApp extends ApplicationV2 {
-  static DEFAULT_OPTIONS={id:'loot-generator-workbench',classes:['loot-generator'],position:{width:1060,height:740},window:{title:'Loot Generator',resizable:true,minimizable:true,icon:'fa-solid fa-gem'}};
-  constructor(...args){super(...args);this.tab='loot';this.fields=structuredClone(defaults);this.result=null;this.showHistory=false;this.busy=false;}
+  static DEFAULT_OPTIONS={id:'loot-generator-workbench',classes:['loot-generator'],position:{width:1060,height:740},window:{title:'Loot Generator v0.2.1',resizable:true,minimizable:true,icon:'fa-solid fa-gem'}};
+  constructor(...args){super(...args);this.tab='loot';this.fields=structuredClone(defaults);this.result=null;this.showHistory=false;this.busy=false;this.dragItems=[];}
   async _renderHTML(){const div=document.createElement('div');div.innerHTML=this.markup();return div;}
   _replaceHTML(result,content){content.replaceChildren(...result.childNodes);}
   _onRender(...args){super._onRender(...args);this.element.onclick=e=>{const btn=e.target.closest('button[data-action]');if(btn && this.element.contains(btn))this.action(btn.dataset.action,btn.dataset);};this.element.onchange=e=>{if(e.target.name)this.fields[this.tab][e.target.name]=e.target.value;};this.element.oninput=e=>{if(e.target.name)this.fields[this.tab][e.target.name]=e.target.value;};}
