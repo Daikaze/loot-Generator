@@ -21,6 +21,6 @@
   ],
   "url": "https://github.com/Daikaze/loot-Generator",
   "manifest": "https://raw.githubusercontent.com/Daikaze/loot-Generator/main/module.json",
-  "download": "https://github.com/Daikaze/loot-Generator/archive/refs/heads/main.zip",
+  "download": "https://raw.githubusercontent.com/Daikaze/loot-Generator/main/dist/loot-generator-v0.2.1.zip",
   "readme": "README.md"
 }
