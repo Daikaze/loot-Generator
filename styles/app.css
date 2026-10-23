@@ -22,3 +22,16 @@
 .loot-generator .lg-gold{color:#e7c17c}.loot-generator .lg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:21px}
 .loot-generator .lg-hist{display:block;width:100%;text-align:left;margin:6px 0}
 @media(max-width:850px){.loot-generator .lg-layout{grid-template-columns:150px minmax(0,1fr)}.loot-generator .lg-fields{grid-template-columns:1fr}}
+/* Native dropdown colors on Firefox, Windows and Chromium, scoped to this module. */
+.loot-generator select, .loot-generator select:focus, .loot-generator select:active{color-scheme:dark!important;appearance:auto;background-color:#121b28!important;color:#f2f5fa!important}
+.loot-generator select option,.loot-generator select optgroup{background-color:#121b28!important;color:#f2f5fa!important;font-weight:500!important;opacity:1!important}
+.loot-generator select option:checked{background-color:#2459a2!important;color:#fff!important}
+.loot-generator select option:disabled{background-color:#1e2632!important;color:#99a3af!important}
+.loot-generator .lg-tip{font-size:12px;color:#bacde1;border-left:2px solid #c69b65;padding-left:10px;margin:0 0 10px}
+.loot-generator .lg-item[draggable="true"]{cursor:grab;user-select:none;transition:background-color .12s;border-radius:4px}
+.loot-generator .lg-item[draggable="true"]:hover{background-color:#304058}
+.loot-generator .lg-item[draggable="true"]:active{cursor:grabbing}
+.loot-generator .lg-entry{display:flex;align-items:center;gap:10px;min-width:0}
+.loot-generator .lg-entry img{width:34px;height:34px;object-fit:cover;border:1px solid #51627b;border-radius:5px;flex-shrink:0}
+.loot-generator .lg-entry>div{min-width:0}
+.loot-generator .lg-grip{color:#c69b65;flex-shrink:0}
