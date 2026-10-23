@@ -1,0 +1,24 @@
+.loot-generator{color:#e9edf5;min-width:720px;min-height:530px;overflow:hidden;background:#111823!important}
+.loot-generator .window-content{padding:0!important;overflow:hidden!important;background:#111823!important}
+.loot-generator *{box-sizing:border-box}
+.loot-generator .lg-layout{display:grid;grid-template-columns:205px minmax(0,1fr);height:100%;min-height:0}
+.loot-generator aside{background:#10151f;border-right:1px solid #303d50;padding:25px 15px;display:flex;flex-direction:column;gap:28px}
+.loot-generator .lg-brand{color:#e2be84;font-weight:800;letter-spacing:1.6px;font-size:14px}
+.loot-generator nav{display:grid;gap:7px}.loot-generator button{background:#253144;border:1px solid #465368;color:#dbe4ef;border-radius:6px;padding:9px 12px;cursor:pointer}
+.loot-generator nav button{text-align:left}.loot-generator nav button.active{background:#443b30;border-color:#ac854d;color:#ffe2b0}
+.loot-generator aside p{margin-top:auto;font-size:10px;color:#91a1b4}
+.loot-generator main{min-width:0;min-height:0;display:flex;flex-direction:column}
+.loot-generator header{display:flex;justify-content:space-between;align-items:center;padding:20px 26px;background:#182130;border-bottom:1px solid #2d394b}
+.loot-generator h1{font-size:25px;color:#f5f0e9;margin:0}.loot-generator h2{font-size:20px;color:#f3eddf}
+.loot-generator h3{font-size:14px;color:#dfc18b;margin:0 0 18px}.loot-generator .lg-scroll{padding:22px 26px;overflow-y:auto;flex:1;min-height:0}
+.loot-generator .lg-panel{border:1px solid #344258;border-radius:9px;padding:21px;background:#1b2634;margin-bottom:18px}
+.loot-generator .lg-fields{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-bottom:22px}
+.loot-generator label{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#adbdd0}
+.loot-generator input,.loot-generator select{background:#121b28!important;color:#f1f4f8!important;border:1px solid #45536a;border-radius:5px;padding:8px;min-height:36px;width:100%}
+.loot-generator button:hover{filter:brightness(1.15)}.loot-generator .lg-primary{background:#d7ac70;color:#231b13;font-weight:750;border-color:#ecd1a8}
+.loot-generator .lg-item{display:flex;justify-content:space-between;gap:16px;padding:12px;border-top:1px solid #3a485a;align-items:flex-start}
+.loot-generator .lg-item strong{font-size:13px}.loot-generator .lg-item small{display:block;color:#a1b0c1;font-size:11px;margin-top:5px;line-height:1.5}
+.loot-generator .lg-item span{white-space:nowrap;text-align:right;color:#dab984;font-size:11px;line-height:1.7}
+.loot-generator .lg-gold{color:#e7c17c}.loot-generator .lg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:21px}
+.loot-generator .lg-hist{display:block;width:100%;text-align:left;margin:6px 0}
+@media(max-width:850px){.loot-generator .lg-layout{grid-template-columns:150px minmax(0,1fr)}.loot-generator .lg-fields{grid-template-columns:1fr}}
