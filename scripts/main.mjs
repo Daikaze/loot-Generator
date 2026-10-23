@@ -244,4 +244,4 @@ Hooks.once('init',()=>{
   Hooks.on('getSceneControlButtons',controls=>{if(!game.user?.isGM||!controls.tokens?.tools)return;controls.tokens.tools.lootGenerator={name:'lootGenerator',title:'Loot Generator',icon:'fa-solid fa-gem',order:51,button:true,visible:true,onChange:()=>open()};});
 });
 Hooks.once('ready',()=>{const mod=game.modules.get(ID);if(mod)mod.api=Object.freeze({open,generate});});
-export {generate,open};
+export {generate,open,sourceItems,mapOpen5eItem,resolveItem,LootApp};
