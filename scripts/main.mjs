@@ -208,9 +208,22 @@ class LootApp extends ApplicationV2 {
     const history=(game.settings.get(ID,'history')?.records??[]);
     return '<div class="lg-layout"><aside><div class="lg-brand">◈ LOOT GENERATOR</div><nav>'+nav+'</nav><p>GM ONLY · FOUNDRY V14</p></aside><main><header><h1>'+escapeHTML(tabLabels[this.tab])+'</h1><button data-action="history">History</button></header><section class="lg-scroll">'+(this.showHistory?'<div class="lg-panel"><h3>Saved Results</h3>'+history.map((x,i)=>'<button class="lg-hist" data-action="load" data-index="'+i+'">'+escapeHTML(x.title)+' · '+escapeHTML(x.created?.slice(0,16)||'')+'</button>').join('')+'</div>':'')+'<div class="lg-panel"><h3>01 · Generator Settings</h3><div class="lg-fields">'+fields+'</div><button class="lg-primary" data-action="generate"'+(this.busy?' disabled':'')+'>Generate '+escapeHTML(tabLabels[this.tab])+'</button></div><div class="lg-panel"><h3>02 · Generated Result</h3>'+(r?'<h2>'+escapeHTML(r.title)+'</h2><p>'+escapeHTML(r.subtitle)+'</p>'+(r.coins?'<p class="lg-gold">'+escapeHTML(coinText(r.coins))+'</p>':'')+entries+'<div class="lg-actions"><button data-action="gm-chat">GM Chat</button><button data-action="share">Share with Players</button><button data-action="save">Save</button><button data-action="copy">Copy</button><button data-action="journal">Journal</button><button data-action="export">Export JSON</button>'+(r.kind==='shop'&&game.modules.get('npc-shops')?.active?'<button data-action="npc-shop">Send to NPC Shops</button>':'')+(r.kind!=='shop'&&game.system.id==='dnd5e'?'<button data-action="give">Give Items to Token</button>':'')+'</div>':'<p>Configure the generator and click Generate.</p>')+'</div></section></main></div>';
   }
-  async action(action,data){if(!game.user.isGM||this.busy)return;this.snapshot();if(action==='tab'){this.tab=data.tab;this.result=null;this.showHistory=false;return this.render({force:true});}if(action==='history'){this.showHistory=!this.showHistory;return this.render({force:true});}
-    if(action==='load'){this.result=(game.settings.get(ID,'history')?.records??[])[clamp(data.index,0,39)];this.showHistory=false;return this.render({force:true});}
-    if(action==='generate'){this.busy=true;try{const opts={...this.fields[this.tab]};this.result=generate(this.tab,opts,await sourceItems(opts.source));}catch(e){console.error(ID,e);notice(e.message,'error');}finally{this.busy=false;await this.render({force:true});}return;}
+  async prepareDrags(){
+    this.dragItems=[];
+    if(!this.result||game.system.id!=='dnd5e')return;
+    for(const entry of (this.result.entries??[])){
+      try{this.dragItems.push(await resolveItem(entry,entry.qty??1));}
+      catch(err){console.warn('Loot Generator: cannot prepare item for drag',entry.name,err);this.dragItems.push(null);}
+    }
+  }
+  async action(action,data){if(!game.user.isGM||this.busy)return;this.snapshot();if(action==='tab'){this.tab=data.tab;this.dragItems=[];this.result=null;this.showHistory=false;return this.render({force:true});}if(action==='history'){this.showHistory=!this.showHistory;return this.render({force:true});}
+    if(action==='load'){this.result=(game.settings.get(ID,'history')?.records??[])[clamp(data.index,0,39)];this.showHistory=false;await this.prepareDrags();return this.render({force:true});}
+    if(action==='generate'){this.busy=true;try{const opts={...this.fields[this.tab]};const online=opts.source?.startsWith('open5e-');
+      const pool=await sourceItems(opts.source,online?opts.search:'');
+      if(online && !pool.length)throw Error('No Open5e items matched. Try another search.');
+      this.result=generate(this.tab,opts,pool);
+      if(online)this.result.lines.push('Open5e: '+pool.length+' source items loaded; source descriptions may need review.');
+      await this.prepareDrags();}catch(e){console.error(ID,e);notice(e.message,'error');}finally{this.busy=false;await this.render({force:true});}return;}
     if(!this.result)return;
     try{
       if(action==='gm-chat'||action==='share')await ChatMessage.create({speaker:{alias:'Loot Generator'},content:chatHTML(this.result),...(action==='gm-chat'?{whisper:game.users.filter(u=>u.isGM).map(u=>u.id)}:{})});
