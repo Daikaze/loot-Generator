@@ -1,12 +1,24 @@
 {
   "id": "loot-generator",
   "title": "Loot Generator",
-  "description": "GM-only loot, shop, and magic item generators for Foundry VTT 14, with optional NPC Shops and Gathering & Crafting integration.",
-  "version": "0.2.0",
-  "authors": [{"name": "Averis Workshop"}],
-  "compatibility": {"minimum": "14", "verified": "14", "maximum": "14"},
-  "esmodules": ["scripts/main.mjs"],
-  "styles": ["styles/app.css"],
+  "description": "GM-only Foundry V14 loot, shops and magic items with drag-and-drop and optional Open5e V2 online source.",
+  "version": "0.2.1",
+  "authors": [
+    {
+      "name": "Averis Workshop"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14",
+    "maximum": "14"
+  },
+  "esmodules": [
+    "scripts/main.mjs"
+  ],
+  "styles": [
+    "styles/app.css"
+  ],
   "url": "https://github.com/Daikaze/loot-Generator",
   "manifest": "https://raw.githubusercontent.com/Daikaze/loot-Generator/main/module.json",
   "download": "https://github.com/Daikaze/loot-Generator/archive/refs/heads/main.zip",
